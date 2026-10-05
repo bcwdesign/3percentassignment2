@@ -34,12 +34,17 @@ def extract_event_date_old(text):
         return to_iso(match)
     return None
 
+import re
+
 def extract_event_date(text):
     """Return the event date as 'YYYY-MM-DD', or None if the notice has no event date."""
 
-    deadline_terms = (
-        "deadline",
+    non_event_terms = (
         "rsvp",
+        "presale",
+        "by",
+        "closes",
+        "deadline",
         "register",
         "registration",
         "apply",
@@ -49,8 +54,8 @@ def extract_event_date(text):
         "due",
     )
 
-    # Break the notice into sentences/clauses so a later deadline
-    # doesn't incorrectly disqualify an earlier event date.
+    # Split into sentences/clauses so a deadline in another
+    # part of the notice doesn't disqualify the event date.
     parts = re.split(r'[.\n;]+', text)
 
     for part in parts:
@@ -61,8 +66,8 @@ def extract_event_date(text):
 
         lower_part = part.lower()
 
-        # Skip dates belonging to deadline-related clauses.
-        if any(term in lower_part for term in deadline_terms):
+        # Ignore dates associated with non-event activities.
+        if any(term in lower_part for term in non_event_terms):
             continue
 
         return to_iso(match)
