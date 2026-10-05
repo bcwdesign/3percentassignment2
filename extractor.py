@@ -33,47 +33,41 @@ def extract_event_date_old(text):
     if match:
         return to_iso(match)
     return None
-import re
 
 def extract_event_date(text):
-    """Return the event date as 'YYYY-MM-DD', or None if the notice has no event date.
-
-    Dates associated with deadlines are ignored. If multiple dates are present,
-    prefer the date whose surrounding text indicates that the event occurs then.
-    """
-    event_terms = (
-        "event", "conference", "meeting", "workshop", "session",
-        "ceremony", "held", "takes place", "scheduled", "starts",
-        "begins", "on"
-    )
+    """Return the event date as 'YYYY-MM-DD', or None if the notice has no event date."""
 
     deadline_terms = (
-        "deadline", "apply", "application", "register", "registration",
-        "submit", "submission", "rsvp", "due", "by"
+        "deadline",
+        "rsvp",
+        "register",
+        "registration",
+        "apply",
+        "application",
+        "submit",
+        "submission",
+        "due",
     )
 
-    candidates = []
+    # Break the notice into sentences/clauses so a later deadline
+    # doesn't incorrectly disqualify an earlier event date.
+    parts = re.split(r'[.\n;]+', text)
 
-    for match in re.finditer(DATE_PATTERN, text):
-        # Examine context around each date.
-        start = max(0, match.start() - 80)
-        end = min(len(text), match.end() + 80)
-        context = text[start:end].lower()
+    for part in parts:
+        match = re.search(DATE_PATTERN, part)
 
-        # Don't treat a deadline as the event date.
-        if any(term in context for term in deadline_terms):
+        if not match:
             continue
 
-        score = sum(term in context for term in event_terms)
-        candidates.append((score, match.start(), match))
+        lower_part = part.lower()
 
-    if not candidates:
-        return None
+        # Skip dates belonging to deadline-related clauses.
+        if any(term in lower_part for term in deadline_terms):
+            continue
 
-    # Prefer the strongest event context; position breaks ties.
-    candidates.sort(key=lambda item: (-item[0], item[1]))
+        return to_iso(match)
 
-    return to_iso(candidates[0][2])
+    return None
 
 if __name__ == "__main__":
     print("Event date:", extract_event_date(NOTICE))
